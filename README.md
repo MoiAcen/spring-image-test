@@ -112,6 +112,19 @@ docker run --rm -it --entrypoint sh spring-hello
 busybox | head -3
 ```
 
+## 容器內使用 curl 測試
+
+runtime image 另外安裝了 `curl`，進入容器後可直接測試（容器內服務在 `localhost:3940`）：
+
+```bash
+# 對執行中的容器開 shell（Rancher Desktop containerd 用 nerdctl，dockerd 用 docker）
+nerdctl exec -it <容器名稱或ID> sh
+
+# 在容器內
+curl localhost:3940
+curl localhost:3940/health   # {"status":"UP"}
+```
+
 ## API
 
 | Method | Path | 回應        |
