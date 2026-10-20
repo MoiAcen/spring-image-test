@@ -44,6 +44,40 @@ Dockerfile 分兩個階段：
 1. `maven:3.9-eclipse-temurin-21`：下載依賴並編譯出 `app.jar`
 2. `eclipse-temurin:21-jre-alpine`：只放 JRE 與 `app.jar`，映像檔較小
 
+## Windows（Rancher Desktop）
+
+Rancher Desktop 的容器引擎有兩種，指令擇一（可在 Rancher Desktop 的 Preferences > Container Engine 查看目前使用哪一種）：
+
+- dockerd (moby)：使用 `docker` 指令
+- containerd：使用 `nerdctl` 指令
+
+PowerShell 範例：
+
+```powershell
+# dockerd (moby)
+docker build -t spring-hello .
+docker run --rm -p 3940:3940 spring-hello
+
+# containerd
+nerdctl build -t spring-hello .
+nerdctl run --rm -p 3940:3940 spring-hello
+```
+
+在 PowerShell 中 `curl` 是 `Invoke-WebRequest` 的別名，請改用下列任一方式呼叫：
+
+```powershell
+curl.exe localhost:3940
+curl.exe localhost:3940/health            # {"status":"UP"}
+Invoke-RestMethod http://localhost:3940/health
+```
+
+進入容器使用 BusyBox：
+
+```powershell
+docker run --rm -it --entrypoint sh spring-hello
+# 或 nerdctl run --rm -it --entrypoint sh spring-hello
+```
+
 ## BusyBox
 
 執行階段的 Alpine Linux 內建 BusyBox，可進入容器使用 `sh`、`ls`、`wget` 等指令：
