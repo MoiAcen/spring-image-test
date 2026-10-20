@@ -66,6 +66,43 @@ curl localhost:3940/health
 nerdctl run --rm -it --entrypoint sh spring-hello
 ```
 
+## 推送到 Azure Container Registry (ACR)
+
+前置條件：已安裝 [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)，並已有（或可建立）一個 ACR。以下以 `<registry>` 代表 ACR 名稱（全小寫），`<resource-group>` 代表資源群組。
+
+Windows cmd（Rancher Desktop，使用 `nerdctl`）：
+
+```bat
+:: 1. 登入 Azure
+az login
+
+:: 2. （可選）建立 ACR；已有可略過
+az group create --name <resource-group> --location eastasia
+az acr create --resource-group <resource-group> --name <registry> --sku Basic
+
+:: 3. 取得 ACR 登入伺服器名稱（通常是 <registry>.azurecr.io）
+az acr show --name <registry> --query loginServer --output tsv
+
+:: 4. 以 access token 登入 ACR（nerdctl 不能用 az acr login，需手動登入）
+az acr login --name <registry> --expose-token --output tsv --query accessToken > token.txt
+set /p TOKEN=<token.txt
+nerdctl login <registry>.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password %TOKEN%
+del token.txt
+
+:: 5. 標記並推送
+nerdctl tag spring-hello <registry>.azurecr.io/spring-hello:1.0
+nerdctl push <registry>.azurecr.io/spring-hello:1.0
+```
+
+說明：`az acr login` 預設是呼叫 `docker login`，在只有 `nerdctl` 的環境無法使用，因此改用 `--expose-token` 取得 token 後以 `nerdctl login` 登入。token 約 3 小時後失效，過期請重做第 4 步。也可改用 ACR 的 admin 帳號（需先 `az acr update -n <registry> --admin-enabled true`），但不建議用於正式環境。
+
+驗證：
+
+```bat
+az acr repository list --name <registry> --output table
+az acr repository show-tags --name <registry> --repository spring-hello --output table
+```
+
 ## BusyBox
 
 執行階段的 Alpine Linux 內建 BusyBox，可進入容器使用 `sh`、`ls`、`wget` 等指令：
