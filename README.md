@@ -26,15 +26,17 @@ Runtime image 為 Alpine Linux（內含 BusyBox）+ JRE 21。
 ```bash
 mvn package -DskipTests
 java -jar target/app.jar
-curl localhost:8080          # Hello World
+curl localhost:3940          # Hello World
+curl localhost:3940/health   # {"status":"UP"}
 ```
 
 ## 以 Docker 建置與執行
 
 ```bash
 docker build -t spring-hello .
-docker run --rm -p 8080:8080 spring-hello
-curl localhost:8080          # Hello World
+docker run --rm -p 3940:3940 spring-hello
+curl localhost:3940          # Hello World
+curl localhost:3940/health   # {"status":"UP"}
 ```
 
 Dockerfile 分兩個階段：
@@ -56,3 +58,4 @@ busybox | head -3
 | Method | Path | 回應        |
 | ------ | ---- | ----------- |
 | GET    | `/`  | Hello World |
+| GET    | `/health` | `{"status":"UP"}` |
