@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 程式開發分享：從玩具到武器</title>
+<style>
+  :root {
+    --bg-dark: #0a0b10;
+    --card-bg: rgba(18, 22, 36, 0.78);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --accent-cyan: #00f0ff;
+    --accent-purple: #9d4edd;
+    --accent-emerald: #10b981;
+    --accent-rose: #ff3366;
+    --accent-amber: #f59e0b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #bg-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  .deck-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    z-index: 10;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(40px) scale(0.98);
+    transition: all 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2.2rem 3.5rem 5rem 3.5rem;
+  }
+
+  .slide.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+  }
+
+  .slide-inner {
+    width: 100%;
+    max-width: 1260px;
+    height: 84vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* Badges & Typography */
+  .badge-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.32rem 0.8rem;
+    background: rgba(0, 240, 255, 0.1);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.65rem;
+    width: fit-content;
+  }
+
+  .badge-tag.danger {
+    background: rgba(255, 51, 102, 0.15);
+    border-color: rgba(255, 51, 102, 0.4);
+    color: var(--accent-rose);
+  }
+
+  .badge-tag.warning {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: var(--accent-amber);
+  }
+
+  .badge-tag.success {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: var(--accent-emerald);
+  }
+
+  .badge-tag.purple {
+    background: rgba(157, 78, 221, 0.15);
+    border-color: rgba(157, 78, 221, 0.4);
+    color: #c084fc;
+  }
+
+  h1.hero-title {
+    font-size: 3.4rem;
+    font-weight: 800;
+    line-height: 1.15;
+    background: linear-gradient(135deg, #ffffff 30%, #94a3b8 70%, #00f0ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  h2.slide-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  p.slide-subtitle {
+    font-size: 0.96rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.15rem;
+    line-height: 1.45;
+  }
+
+  .glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Buttons */
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.72rem 1.5rem;
+    background: linear-gradient(135deg, #00f0ff, #0077ff);
+    color: #050b14;
+    font-weight: 700;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.92rem;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
+  }
+
+  .btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(0, 240, 255, 0.5);
+  }
+
+  .btn-action.success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+  }
+
+  .btn-action.danger {
+    background: linear-gradient(135deg, #ff3366, #e11d48);
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(255, 51, 102, 0.3);
+  }
+
+  .btn-action.secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+  }
+  .btn-action.secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Grid Layouts */
+  .combo-layout {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 1.4rem;
+    height: 100%;
+  }
+
+  .two-col-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.4rem;
+    height: 100%;
+  }
+
+  .spec-pill-group {
+    display: flex;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .spec-pill {
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .spec-pill.danger {
+    background: rgba(255, 51, 102, 0.12);
+    border: 1px solid rgba(255, 51, 102, 0.3);
+    color: #fda4af;
+  }
+  .spec-pill.warning {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fde68a;
+  }
+  .spec-pill.success {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #a7f3d0;
+  }
+  .spec-pill.purple {
+    background: rgba(157, 78, 221, 0.12);
+    border: 1px solid rgba(157, 78, 221, 0.3);
+    color: #e9d5ff;
+  }
+
+  .cost-badge-large {
+    font-family: var(--font-mono);
+    font-size: 2.3rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .code-view {
+    background: #14161f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.15rem;
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    line-height: 1.55;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .code-annotation {
+    background: rgba(255, 51, 102, 0.15);
+    border-left: 3px solid var(--accent-rose);
+    padding: 0.45rem 0.7rem;
+    margin: 0.45rem 0;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: #fda4af;
+  }
+
+  .code-annotation.success {
+    background: rgba(16, 185, 129, 0.15);
+    border-left: 3px solid var(--accent-emerald);
+    color: #a7f3d0;
+  }
+
+  /* Timeline & Stepper Graphic */
+  .timeline-bar {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Deck Navigation Controls */
+  .deck-controls {
+    position: fixed;
+    bottom: 1.15rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 1.15rem;
+    padding: 0.5rem 1.3rem;
+    background: rgba(15, 20, 32, 0.88);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    z-index: 999;
+  }
+  .nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover {
+    color: var(--accent-cyan);
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .slide-dots {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .dot.active {
+    width: 20px;
+    border-radius: 4px;
+    background: var(--accent-cyan);
+    box-shadow: 0 0 10px var(--accent-cyan);
+  }
+
+  /* Interactive Elements */
+  .devops-window {
+    background: #181b24;
+    border: 1px solid #2d3345;
+    border-radius: 12px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .devops-topbar {
+    background: #11131a;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #282d3d;
+  }
+  .devops-main {
+    padding: 1.5rem 2rem;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    overflow-y: auto;
+    font-size: 0.95rem;
+  }
+  .ide-window {
+    background: #1e1f22;
+    border: 1px solid #313438;
+    border-radius: 12px;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 220px 1.4fr 1.3fr;
+    overflow: hidden;
+    font-family: var(--font-mono);
+  }
+  .ide-sidebar {
+    background: #191a1d;
+    border-right: 1px solid #2c2e33;
+    padding: 1rem;
+    font-size: 0.85rem;
+    color: #8c939d;
+  }
+  .ide-editor {
+    background: #1e1f22;
+    padding: 1.2rem;
+    overflow-y: auto;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    border-right: 1px solid #2c2e33;
+  }
+  .ide-copilot {
+    background: #141517;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-sans);
+  }
+  .copilot-messages {
+    flex: 1;
+    padding: 1.25rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    font-size: 0.9rem;
+  }
+  .copilot-input-box {
+    padding: 1rem;
+    background: #191a1d;
+    border-top: 1px solid #2c2e33;
+  }
+  .credit-meter-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(255, 51, 102, 0.1), rgba(15, 23, 42, 0.8));
+    border: 1px solid rgba(255, 51, 102, 0.4);
+    border-radius: 14px;
+    padding: 1.15rem 1.8rem;
+    margin-bottom: 1.15rem;
+  }
+  .peer-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+  .peer-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .peer-card.hero {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.05);
+  }
+  .model-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    height: 100%;
+  }
+  .model-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.25s ease;
+  }
+  .model-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="deck-container">
+
+  <!-- SLIDE 1: HERO -->
+  <div class="slide active" id="slide-1">
+    <div class="slide-inner" style="align-items: center; text-align: center;">
+      <div class="badge-tag">⚡ Kinetic Keynote · 2026 Dev Edition</div>
+      <h1 class="hero-title">從玩具到武器：<br>AI 程式開發實戰與認知解構</h1>
+      <p class="slide-subtitle" style="max-width: 650px;">
+        一鍵生成程式碼的時代，我們是在享受十倍生產力，<br>還是在為公司的 API Credit 舉辦一場狂歡派對？喵 (・ω・)ノ
+      </p>
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+        <button class="btn-action" onclick="goToSlide(2)">
+          <span>開始互動流程 (Enter Experience)</span>
+          <span>→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: AZURE DEVOPS -->
+  <div class="slide" id="slide-2">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.8rem;">
+        <div>
+          <div class="badge-tag">Scene 01 · 需求接收</div>
+          <h2 class="slide-title">Azure DevOps Boards 看板</h2>
+        </div>
+        <div id="copy-status" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan);">
+          狀態：等待複製需求...
+        </div>
+      </div>
+
+      <div class="devops-window glass-card">
+        <div class="devops-topbar">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#ff5f56;"></span>
+            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#ffbd2e;"></span>
+            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#27c93f;"></span>
+            <span style="font-size: 0.85rem; color: #8b949e; margin-left: 0.8rem; font-family: var(--font-mono);">Azure DevOps / WorkItems / UserStory-4092</span>
+          </div>
+          <button class="btn-action" id="btn-copy-issue" onclick="copyRequirement()">
+            <span>📋 複製需求內容 (Copy Issue)</span>
+          </button>
+        </div>
+
+        <div class="devops-main">
+          <div>
+            <div style="font-size: 0.8rem; color: #60a5fa; font-family: var(--font-mono); margin-bottom: 0.4rem;">USER STORY #4092 · PRIORITY: HIGH</div>
+            <h3 style="font-size: 1.4rem; margin-bottom: 1rem; color: #f1f5f9;">新增檔案上傳功能 (Multi-part S3 Upload Service)</h3>
+            
+            <p style="color: #cbd5e1; margin-bottom: 1rem; line-height: 1.6;">
+              <strong>需求描述：</strong><br>
+              請為會員後台實作大檔案上傳功能。前端上傳多媒體檔案至後端 API，後端需驗證副檔名、檔案大小上限並上傳至公司雲端儲存，最後回傳檔案存取 URL。
+            </p>
+
+            <div style="background: rgba(0,0,0,0.3); border-left: 3px solid var(--accent-cyan); padding: 1rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; color: #94a3b8;">
+              <strong style="color: var(--accent-cyan);">[驗收標準 / AC]</strong><br>
+              1. 支援 multipart/form-data 格式上傳<br>
+              2. 限制單檔大小最大 50MB，禁止可執行檔 (.exe, .sh)<br>
+              3. 成功時回傳 200 OK 及 JSON: {"fileId": "...", "url": "..."}<br>
+              4. 必須包含完整 Unit Test 測試覆蓋率
+            </div>
+          </div>
+
+          <div style="border-left: 1px solid #2d3345; padding-left: 1.5rem; display: flex; flex-direction: column; gap: 1rem; font-size: 0.88rem;">
+            <div>
+              <span style="color: #64748b; display: block; font-size: 0.78rem;">STORY POINTS</span>
+              <strong style="font-size: 1.3rem; color: var(--accent-amber); font-family: var(--font-mono);">8 Points</strong>
+            </div>
+            <div>
+              <span style="color: #64748b; display: block; font-size: 0.78rem;">ASSIGNEE</span>
+              <span style="color: #e2e8f0;">Senior Dev (You)</span>
+            </div>
+            <div>
+              <span style="color: #64748b; display: block; font-size: 0.78rem;">NEXT ACTION</span>
+              <span style="color: var(--accent-cyan);">複製需求後前往 IDE 實作 →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: INTELLIJ & COPILOT -->
+  <div class="slide" id="slide-3">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+        <div>
+          <div class="badge-tag">Scene 02 · 實作交付</div>
+          <h2 class="slide-title">IntelliJ IDEA + GitHub Copilot</h2>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button class="btn-action secondary" id="btn-paste" onclick="pasteRequirement()">
+            <span>📥 貼上需求 Prompt</span>
+          </button>
+          <button class="btn-action" id="btn-deploy" style="display:none;" onclick="deploySuccess()">
+            <span>🚀 一鍵 Commit & Deploy!</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="ide-window glass-card">
+        <div class="ide-sidebar">
+          <div style="margin-bottom: 1rem; font-weight: bold; color: #cbd5e1;">📁 Project Explorer</div>
+          <div style="margin-left: 0.5rem; line-height: 2;">
+            <div>📂 src/main/kotlin</div>
+            <div style="color: var(--accent-cyan);">📄 UploadController.kt</div>
+            <div>📄 StorageService.kt</div>
+            <div>📂 src/test/kotlin</div>
+            <div>📄 UploadTest.kt</div>
+          </div>
+        </div>
+
+        <div class="ide-editor" id="code-editor">
+<span style="color:#6272a4;">// 等待 Copilot 生成中...</span>
+<span style="color:#ff79c6;">package</span> com.company.upload
+
+<span style="color:#ff79c6;">@RestController</span>
+<span style="color:#ff79c6;">@RequestMapping</span>(<span style="color:#f1fa8c;">"/api/v1/files"</span>)
+<span style="color:#8be9fd;">class</span> <span style="color:#50fa7b;">UploadController</span> {
+    <span style="color:#6272a4;">// 點擊右側 Copilot 觸發生成</span>
+}
+        </div>
+
+        <div class="ide-copilot">
+          <div style="padding: 0.75rem 1rem; background: #191a1d; border-bottom: 1px solid #2c2e33; display: flex; justify-content: space-between; align-items: center;">
+            <strong style="font-size: 0.85rem; color: #f1f5f9; display: flex; align-items: center; gap: 0.5rem;">
+              <span>🤖 GitHub Copilot</span>
+            </strong>
+            <span style="font-size: 0.75rem; color: #10b981;">Online · 3.5ms</span>
+          </div>
+
+          <div class="copilot-messages" id="copilot-stream">
+            <div style="color: #64748b; font-size: 0.85rem; text-align: center; margin-top: 2rem;">
+              請先點擊上方「貼上需求 Prompt」按鈕開始對話
+            </div>
+          </div>
+
+          <div class="copilot-input-box">
+            <div id="mock-input" style="background:#0e1013; padding:0.6rem 0.8rem; border-radius:6px; color:#94a3b8; font-size:0.85rem; min-height:40px; margin-bottom:0.5rem; border:1px solid #282d3d;">
+              輸入提示詞或貼上需求...
+            </div>
+            <button class="btn-action" id="btn-run-ai" style="width: 100%; font-size: 0.85rem; padding: 0.5rem;" onclick="triggerAiGeneration()" disabled>
+              <span>發送給 Copilot 執行 (Run Prompt)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: THE FAKE FINALE -->
+  <div class="slide" id="slide-4">
+    <div class="slide-inner" style="align-items: center; text-align: center;">
+      <canvas id="confetti-canvas" style="position:absolute; width:100%; height:100%; pointer-events:none; top:0; left:0;"></canvas>
+      <div class="glass-card" style="padding: 3rem; max-width: 750px; z-index: 10; display:flex; flex-direction:column; align-items:center; gap:1.5rem;">
+        <div style="font-size: 4rem;">🎉 👏 🍾</div>
+        <h1 class="hero-title" style="margin-bottom: 0.5rem; font-size: 3rem;">謝謝大家！Q&A 時間</h1>
+        <p style="font-size: 1.15rem; color: #a5f3fc;">
+          <strong>8 個 Story Points 的工作，AI 花 3 秒搞定。</strong><br>
+          工程師從此只需要躺平喝咖啡，AI 開發時代全面降臨！
+        </p>
+
+        <div style="display: flex; gap: 2rem; margin: 1rem 0;">
+          <div style="background: rgba(255,255,255,0.05); padding: 1rem 1.8rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">耗費時間</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--accent-emerald); font-family: var(--font-mono);">3.2s</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); padding: 1rem 1.8rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">測試通過率</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--accent-cyan); font-family: var(--font-mono);">100%</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); padding: 1rem 1.8rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">老闆滿意度</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--accent-amber); font-family: var(--font-mono);">MAX</div>
+          </div>
+        </div>
+
+        <button class="btn-action danger" style="margin-top: 1rem;" onclick="goToSlide(5)">
+          <span>等等……事情真的有這麼順利嗎？(Proceed Reality) →</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: CREDIT BURNOUT -->
+  <div class="slide" id="slide-5">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.9rem;">
+        <div>
+          <div class="badge-tag danger">🚨 Reality Check · 慘案現場</div>
+          <h2 class="slide-title" style="color: var(--accent-rose);">等等……同事的 AI 把公司的 Credit 刷爆了？！</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">明明做差不多的功能，為什麼有人一個月 $5，有人三天噴光預算？</p>
+      </div>
+
+      <div class="credit-meter-box">
+        <div>
+          <div style="font-size: 0.85rem; color: #fca5a5; font-family: var(--font-mono); margin-bottom: 0.25rem;">
+            TEAM API BALANCE · 團隊額度即時跳表
+          </div>
+          <div class="credit-number" id="credit-counter" style="font-size:2.8rem; font-weight:800; color:var(--accent-rose); font-family:var(--font-mono);">0 Credits (欠費警告)</div>
+        </div>
+        <div style="text-align: right; font-size: 0.88rem;">
+          <div style="color: #f87171; font-weight: bold; margin-bottom: 0.35rem;">⚠️ 狀態：已觸發 Hard Limit 熔斷</div>
+          <div style="color: var(--text-secondary);">今日耗費：$1,482.50 USD / 額度剩餘：0%</div>
+        </div>
+      </div>
+
+      <div class="peer-grid">
+        <div class="peer-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size: 1.4rem;">🚀</span>
+            <span style="font-family: var(--font-mono); color: var(--accent-rose); font-weight:bold;">-680 Credits</span>
+          </div>
+          <strong style="color: #f87171; font-size:0.95rem;">【大砲打小鳥型】</strong>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
+            問個 CSS 置中、正則表達式，開頂級旗艦思考模型讓它深思熟慮 40 秒。<br>
+            <em>「每千字貴 20 倍，錢包直接火化。」</em>
+          </p>
+        </div>
+
+        <div class="peer-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size: 1.4rem;">🐘</span>
+            <span style="font-family: var(--font-mono); color: var(--accent-rose); font-weight:bold;">-1,250 Credits</span>
+          </div>
+          <strong style="color: #f87171; font-size:0.95rem;">【巨嬰塞專案型】</strong>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
+            問個小 Bug 把整包 `node_modules`、歷史 40 輪對話與編譯垃圾全選發送。<br>
+            <em>「Context 塞爆，觸發計費滾雪球。」</em>
+          </p>
+        </div>
+
+        <div class="peer-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size: 1.4rem;">🔄</span>
+            <span style="font-family: var(--font-mono); color: var(--accent-rose); font-weight:bold;">-850 Credits</span>
+          </div>
+          <strong style="color: #f87171; font-size:0.95rem;">【除錯鬼打牆型】</strong>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
+            不給任何邊界約束，純貼報錯紅字和 AI 互噴 30 回合，越修越爛。<br>
+            <em>「重送 30 次，每次都在重新讀取巨型上下文。」</em>
+          </p>
+        </div>
+
+        <div class="peer-card hero">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size: 1.4rem;">🎯</span>
+            <span style="font-family: var(--font-mono); color: var(--accent-emerald); font-weight:bold;">-4 Credits</span>
+          </div>
+          <strong style="color: var(--accent-emerald); font-size:0.95rem;">【精準手術刀型】</strong>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
+            先定好 Interface 與邊界，輕量任務用 Haiku，複雜架構才呼叫 Sonnet/Opus。<br>
+            <em>「高信噪比提問，省下 98% 點數。」</em>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: CLAUDE 5.5 SPECTRUM -->
+  <div class="slide" id="slide-6">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
+        <div>
+          <div class="badge-tag">🧠 Dimension 01 · 模型天賦樹</div>
+          <h2 class="slide-title">Claude 5.5 模型光譜：別把超跑當買菜車</h2>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent-amber);">
+          Official Anthropic 5.5 Specs (2026)
+        </div>
+      </div>
+      <p class="slide-subtitle">
+        沒有「最好」的模型，只有「放在對的位置」的模型。模型級別選錯，成本與延遲立刻相差數十倍！喵 (・ω・)ノ
+      </p>
+
+      <div class="model-card-grid">
+        <!-- Haiku 5.5 -->
+        <div class="model-card">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span class="badge-tag success" style="margin-bottom:0;">輕量先鋒</span>
+              <span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--accent-emerald);">基準 1x 成本</span>
+            </div>
+            <h3 style="color: var(--accent-cyan); font-size: 1.35rem; margin-bottom: 0.4rem;">Claude Haiku 5.5</h3>
+            <div style="font-family:var(--font-mono); font-size:0.82rem; color:#94a3b8; margin-bottom:1rem;">
+              $0.10 / $0.50 per MTok · 毫秒級反應
+            </div>
+            <p style="font-size: 0.86rem; color: #cbd5e1; line-height: 1.55;">
+              <strong>核心強項：</strong>IDE 單行行內自動補全、語法查閱、產生 Mock 假資料、JSON/DTO 欄位映射。<br>
+              <strong>盲點：</strong>缺乏長鏈推理能力，寫複雜架構容易無中生有。
+            </p>
+          </div>
+          <div style="background:rgba(0,0,0,0.3); padding:0.75rem; border-radius:8px; font-size:0.8rem; color:var(--accent-cyan);">
+            ⚡ 適用 70% 的日常敲鍵盤時刻
+          </div>
+        </div>
+
+        <!-- Sonnet 5.5 -->
+        <div class="model-card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.04);">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span class="badge-tag warning" style="margin-bottom:0;">工程主力機</span>
+              <span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--accent-amber);">20x 成本</span>
+            </div>
+            <h3 style="color: var(--accent-amber); font-size: 1.35rem; margin-bottom: 0.4rem;">Claude Sonnet 5.5</h3>
+            <div style="font-family:var(--font-mono); font-size:0.82rem; color:#94a3b8; margin-bottom:1rem;">
+              $2.00 / $10.00 per MTok · 極速工程主力
+            </div>
+            <p style="font-size: 0.86rem; color: #cbd5e1; line-height: 1.55;">
+              <strong>核心強項：</strong>完整 Feature 模組開發、跨檔案程式碼重構、指令遵循（Instruction Following）、撰寫具業務邏輯的測試。<br>
+              <strong>定位：</strong>編程理解力與性價比的<strong>黃金平衡點</strong>。
+            </p>
+          </div>
+          <div style="background:rgba(0,0,0,0.3); padding:0.75rem; border-radius:8px; font-size:0.8rem; color:var(--accent-amber);">
+            🏆 企業級交付的核心主力武器
+          </div>
+        </div>
+
+        <!-- Opus 5.5 / Fable 5.1 -->
+        <div class="model-card">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span class="badge-tag danger" style="margin-bottom:0;">前沿推理巨獸</span>
+              <span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--accent-rose);">40x ~ 100x+</span>
+            </div>
+            <h3 style="color: var(--accent-rose); font-size: 1.35rem; margin-bottom: 0.4rem;">Opus 5.5 / Fable 5.1</h3>
+            <div style="font-family:var(--font-mono); font-size:0.82rem; color:#94a3b8; margin-bottom:1rem;">
+              $4~$10 / $20~$50 per MTok · 深度思考
+            </div>
+            <p style="font-size: 0.86rem; color: #cbd5e1; line-height: 1.55;">
+              <strong>核心強項：</strong>複雜並發競爭條件（Race Condition）推導、底層核心演算法推演、高難度系統架構決策。<br>
+              <strong>盲點：</strong>慢且貴！拿來寫 CRUD 等於拿火箭筒打蚊子。
+            </p>
+          </div>
+          <div style="background:rgba(0,0,0,0.3); padding:0.75rem; border-radius:8px; font-size:0.8rem; color:var(--accent-rose);">
+            🛡️ 專攻疑難雜症與架構裁判
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: CONTEXT EXPLAINED (STANDALONE) -->
+  <div class="slide" id="slide-7">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.8rem;">
+        <div>
+          <div class="badge-tag">📦 Dimension 02 · 上下文深度解析</div>
+          <h2 class="slide-title">Context 不是無上限硬碟，而是「極其昂貴的動態 RAM」</h2>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent-cyan);">
+          Stateless Architecture of LLMs
+        </div>
+      </div>
+      <p class="slide-subtitle">
+        搞懂模型「沒有持續記憶」的底層機制，你就掌握了控制 Credit 帳單與抑制幻覺的 80% 密碼！
+      </p>
+
+      <div class="two-col-layout">
+        <!-- Mechanism -->
+        <div class="glass-card" style="padding: 1.6rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h3 style="font-size: 1.15rem; color: var(--accent-cyan); margin-bottom: 0.75rem;">
+              🔁 每次「發送」背後的真實封包流
+            </h3>
+            <p style="font-size: 0.86rem; color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem;">
+              在 IDE 裡每一次按下 Enter，系統<strong>從來不是只送出你打的那句話</strong>！而是將整份包裝重新打包做全量運算：
+            </p>
+
+            <div style="background: #11131a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.8;">
+              <span style="color:#c084fc;">[System Prompt]</span> (角色規範與安全邊界)<br>
+              <span style="color:#60a5fa;">+ [專案關聯引用檔]</span> (被自動或手動 @ 的檔案)<br>
+              <span style="color:#f59e0b;">+ [前 N 輪全部對話紀錄]</span> (歷史生成的代碼與抱怨)<br>
+              <span style="color:#10b981;">+ [當前使用者最新輸入]</span><br>
+              <div style="border-top:1px dashed #475569; margin-top:0.4rem; padding-top:0.4rem; color:var(--accent-rose); font-weight:bold;">
+                = 整包重新計費運算（Total Input Tokens）
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.82rem; color: #94a3b8; font-family: var(--font-mono);">
+            💡 LLM 每次都是「重新閱讀全書」，上下文越長，每回合基本開銷越重。
+          </div>
+        </div>
+
+        <!-- Traps -->
+        <div class="glass-card" style="padding: 1.6rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h3 style="font-size: 1.15rem; color: var(--accent-rose); margin-bottom: 0.75rem;">
+              ⚠️ Context 的兩大致命陷阱
+            </h3>
+
+            <div style="background: rgba(255, 51, 102, 0.08); border-left: 3px solid var(--accent-rose); padding: 0.9rem; border-radius: 6px; margin-bottom: 1rem;">
+              <strong style="color: #f87171; font-size:0.9rem;">1. Token 計費滾雪球效應 (Compounding)</strong>
+              <p style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5; margin-top: 0.3rem;">
+                第 1 輪對話只讀 2,000 Tokens；聊到第 15 輪時，因為背負整串歷史紀錄，<strong>單次請求可能飆破 60,000 Tokens</strong>！這就是為什麼聊越久，Credit 燃燒得呈幾何級數暴增。
+              </p>
+            </div>
+
+            <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid var(--accent-amber); padding: 0.9rem; border-radius: 6px;">
+              <strong style="color: #fbbf24; font-size:0.9rem;">2. 注意力稀釋 (Needle In A Haystack 迷失)</strong>
+              <p style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5; margin-top: 0.3rem;">
+                雖然 Claude 5.5 支援高達 1M Tokens 超長視窗，但塞入整包 `build/` 或 40 個不相關檔案時，模型對<strong>核心資安約束與型態定義</strong>的注意力會被嚴重稀釋，導致寫出看似有理的垃圾。
+              </p>
+            </div>
+          </div>
+
+          <div style="background: rgba(16, 185, 129, 0.1); padding: 0.75rem; border-radius: 8px; font-size: 0.82rem; color: var(--accent-emerald);">
+            🎯 <strong>解法：手術刀原則。</strong>只傳 Interface 契約、及時開新對話（Reset Context）！
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: EFFORT EXPLAINED (STANDALONE) -->
+  <div class="slide" id="slide-8">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.8rem;">
+        <div>
+          <div class="badge-tag purple">🧠 Dimension 03 · 思考預算解析</div>
+          <h2 class="slide-title">Reasoning Effort：讓模型脫口而出，還是深思熟慮？</h2>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 0.82rem; color: #c084fc;">
+          Thinking Budget & Extended CoT
+        </div>
+      </div>
+      <p class="slide-subtitle">
+        在輸出第一行程式碼之前，模型在「隱藏思考鏈」中所花費的 Token 與時間，就是 Reasoning Effort。
+      </p>
+
+      <div class="two-col-layout">
+        <!-- Low Effort -->
+        <div class="glass-card" style="padding: 1.6rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span class="badge-tag success" style="margin-bottom:0;">Low / Instant Effort</span>
+              <span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--accent-emerald);">思考時間：0s · 0 Token</span>
+            </div>
+            <h3 style="font-size: 1.25rem; color: var(--accent-emerald); margin-bottom: 0.5rem;">
+              直覺反射式輸出 (Instant Generation)
+            </h3>
+            <p style="font-size: 0.86rem; color: #cbd5e1; line-height: 1.55; margin-bottom: 1rem;">
+              模型接收到 Prompt 後直接根據機率分布輸出 Token，<strong>不進行前置推演與自我驗證</strong>。
+            </p>
+
+            <div class="timeline-bar">
+              <div style="font-size:0.78rem; color:#94a3b8; margin-bottom:0.4rem; font-family:var(--font-mono);">
+                執行時間軸：
+              </div>
+              <div style="display:flex; height:24px; border-radius:4px; overflow:hidden; font-size:0.75rem; text-align:center; line-height:24px; font-weight:bold;">
+                <div style="width:100%; background:var(--accent-emerald); color:#050b14;">即時輸出 Code (1~3s)</div>
+              </div>
+            </div>
+
+            <div style="font-size: 0.82rem; color: #94a3b8; line-height: 1.5; margin-top: 0.75rem;">
+              ✅ <strong>最適合：</strong>樣板代碼 (Boilerplate)、CRUD、寫 Mock 資料、正則表達式、單純格式轉換。<br>
+              ❌ <strong>禁忌：</strong>拿來解並發競爭、資安邊界推導（因為根本沒想過就寫出來了）。
+            </div>
+          </div>
+
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-emerald);">
+            ⚡ 速度最快，Credit 零無謂耗費
+          </div>
+        </div>
+
+        <!-- High Effort -->
+        <div class="glass-card" style="padding: 1.6rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span class="badge-tag purple" style="margin-bottom:0;">High Effort / Deep CoT</span>
+              <span style="font-family:var(--font-mono); font-size:0.8rem; color:#c084fc;">思考時間：10~45s · 隱形計費</span>
+            </div>
+            <h3 style="font-size: 1.25rem; color: #c084fc; margin-bottom: 0.5rem;">
+              自我推演與校準 (Extended Thinking)
+            </h3>
+            <p style="font-size: 0.86rem; color: #cbd5e1; line-height: 1.55; margin-bottom: 1rem;">
+              在回答前，模型在隱藏視窗中自主展開「假設 ➔ 證偽 ➔ 邊界回溯 ➔ 修訂架構」的多步驟推導。
+            </p>
+
+            <div class="timeline-bar">
+              <div style="font-size:0.78rem; color:#94a3b8; margin-bottom:0.4rem; font-family:var(--font-mono);">
+                執行時間軸：
+              </div>
+              <div style="display:flex; height:24px; border-radius:4px; overflow:hidden; font-size:0.75rem; text-align:center; line-height:24px; font-weight:bold;">
+                <div style="width:65%; background:#9d4edd; color:#fff;">Thinking 推導 (30s)</div>
+                <div style="width:35%; background:var(--accent-cyan); color:#050b14;">輸出 (5s)</div>
+              </div>
+            </div>
+
+            <div style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5; margin-top: 0.75rem;">
+              ✅ <strong>最適合：</strong>高難度排錯（OOM/Race Condition）、設計分散式架構、推演資安防禦網。<br>
+              ⚠️ <strong>代價：</strong>隱藏的 Thinking Tokens <strong>全數計入 Output 費用</strong>！寫個 POJO 開 High Effort 是純粹的燒錢。
+            </div>
+          </div>
+
+          <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-rose);">
+            💸 昂貴但致命精準：把預算留給真正的架構硬仗
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: COMBO 1 (DISASTER 1: ZERO CONTEXT RUSH) -->
+  <div class="slide" id="slide-9">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+        <div>
+          <div class="badge-tag danger">組合實戰 01 · 盲目快餐</div>
+          <h2 class="slide-title" style="color: var(--accent-rose);">輕量模型 ＋ 零脈絡 ＋ 零思考 (Haiku + Zero Context + Instant)</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">典型症狀：只丟一句「幫我寫上傳功能」，期待 1 秒交差</p>
+      </div>
+
+      <div class="combo-layout">
+        <!-- Left: Analysis -->
+        <div class="glass-card" style="padding: 1.6rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="spec-pill-group">
+              <span class="spec-pill danger">🤖 Model: Claude Haiku 5.5</span>
+              <span class="spec-pill danger">📦 Context: 0 (無 Interface/約束)</span>
+              <span class="spec-pill danger">🧠 Effort: Instant (0s)</span>
+            </div>
+
+            <div style="margin: 1rem 0;">
+              <div style="color: #94a3b8; font-size: 0.82rem;">單次請求耗損</div>
+              <div class="cost-badge-large" style="color: var(--accent-emerald);">~ 2 Credits (超便宜)</div>
+            </div>
+
+            <div style="background: rgba(255, 51, 102, 0.1); border: 1px solid rgba(255, 51, 102, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+              <h4 style="color: #f87171; margin-bottom: 0.4rem; font-size: 0.95rem;">💥 生產可用度：15% (上線即 P0 事故)</h4>
+              <p style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5;">
+                雖然速度快、點數便宜，但因為<strong>毫無架構約束與思考推演</strong>，模型直接拿最危險的初學者範例充數！
+              </p>
+            </div>
+          </div>
+
+          <div style="font-size: 0.82rem; color: #fca5a5; font-family: var(--font-mono);">
+            💀 結論：省了幾毛錢的 Credit，換來半夜被 PagerDuty 叫醒擦屁股。
+          </div>
+        </div>
+
+        <!-- Right: Code X-Ray -->
+        <div class="code-view">
+          <div style="color: #64748b; margin-bottom: 0.5rem;">// 生成的危險代碼照妖鏡</div>
+          <span style="color:#ff79c6;">@PostMapping</span>(<span style="color:#f1fa8c;">"/upload"</span>)<br>
+          <span style="color:#ff79c6;">fun</span> <span style="color:#50fa7b;">upload</span>(<span style="color:#ff79c6;">@RequestParam</span> file: MultipartFile) {<br>
+          &nbsp;&nbsp;<span style="color:#6272a4;">// 🚨 致命雷點 1：直接吃進記憶體，2GB 檔案上傳直接 OOM 炸毀 Pod</span><br>
+          &nbsp;&nbsp;<span style="color:#ff79c6;">val</span> bytes = file.bytes<br>
+          <div class="code-annotation">
+            💥 <strong>Vulnerability #1: Out Of Memory (OOM)</strong><br>
+            缺乏串流傳輸 (Stream)，大量並發直接耗盡 JVM Heap！
+          </div>
+          &nbsp;&nbsp;<span style="color:#6272a4;">// 🚨 致命雷點 2：檔名未過濾，被傳 ../../etc/passwd 奪取伺服器權限</span><br>
+          &nbsp;&nbsp;<span style="color:#ff79c6;">val</span> dest = File(<span style="color:#f1fa8c;">"/var/uploads/"</span> + file.originalFilename)<br>
+          <div class="code-annotation">
+            💥 <strong>Vulnerability #2: Path Traversal (路徑遍歷漏洞)</strong><br>
+            完全信任前端檔名，未做正規化與副檔名白名單防護！
+          </div>
+          &nbsp;&nbsp;dest.writeBytes(bytes)<br>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: COMBO 2 (DISASTER 2: OVERKILL BURNER) -->
+  <div class="slide" id="slide-10">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+        <div>
+          <div class="badge-tag warning">組合實戰 02 · 燒錢黑洞</div>
+          <h2 class="slide-title" style="color: var(--accent-amber);">旗艦推理 ＋ 全專案垃圾倒進去 (Opus/Fable + 150k Dirty Dump + Deep CoT)</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">典型症狀：寫個小 DTO 也要全選 30 個檔案，開滿 Thinking Tokens 空轉</p>
+      </div>
+
+      <div class="combo-layout">
+        <!-- Left: Analysis -->
+        <div class="glass-card" style="padding: 1.6rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="spec-pill-group">
+              <span class="spec-pill warning">🤖 Model: Claude Opus 5.5 / Fable</span>
+              <span class="spec-pill warning">📦 Context: 150,000 Tokens (整包專案)</span>
+              <span class="spec-pill warning">🧠 Effort: Deep CoT (45s)</span>
+            </div>
+
+            <div style="margin: 1rem 0;">
+              <div style="color: #94a3b8; font-size: 0.82rem;">單次請求耗損</div>
+              <div class="cost-badge-large" style="color: var(--accent-rose);">~ 1,450 Credits (破表 💸)</div>
+            </div>
+
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+              <h4 style="color: #fbbf24; margin-bottom: 0.4rem; font-size: 0.95rem;">⚠️ 生產可用度：60% (注意力稀釋與重度延遲)</h4>
+              <p style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5;">
+                雖然模型具備頂級推導力，但塞了整包 `node_modules` 與過期報錯，模型在背景花了 40 秒推導<strong>人生哲學</strong>，核心規則反而被稀釋！
+              </p>
+            </div>
+          </div>
+
+          <div style="font-size: 0.82rem; color: #fde68a; font-family: var(--font-mono);">
+            💸 結論：等答案等到咖啡都喝完，發問兩次直接燒掉團隊一週的 API 額度。
+          </div>
+        </div>
+
+        <!-- Right: Code X-Ray -->
+        <div class="code-view">
+          <div style="color: #64748b; margin-bottom: 0.5rem;">// 模型內心戲過多，寫出過度設計的抽象天梯</div>
+          <span style="color:#6272a4;">// [Thinking 42s: 正在比對全專案 50 個無關的 AbstractFactory...]</span><br><br>
+          <span style="color:#ff79c6;">class</span> <span style="color:#50fa7b;">EnterpriseDistributedUploadCoordinatorFactoryStrategy</span> {<br>
+          &nbsp;&nbsp;<span style="color:#6272a4;">// 為了迎合專案裡的舊扣，硬塞了 8 層抽象與過度依賴</span><br>
+          &nbsp;&nbsp;<span style="color:#ff79c6;">fun</span> <span style="color:#50fa7b;">coordinate</span>(context: GlobalApplicationEventMulticaster) {<br>
+          <div class="code-annotation" style="background:rgba(245,158,11,0.15); border-left-color:var(--accent-amber); color:#fde68a;">
+            ⚠️ <strong>Over-engineering & Lost in the Middle</strong><br>
+            注意力被龐雜上下文沖淡，明明只要一個上傳 Controller，卻寫出 400 行難以維護的抽象怪物！
+          </div>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6272a4;">// 隱形代價：每改一次需求重新送出，重新消耗 $1.20 美金</span><br>
+          &nbsp;&nbsp;}<br>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11: COMBO 3 (THE SWEET SPOT: SURGICAL ENGINEERING) -->
+  <div class="slide" id="slide-11">
+    <div class="slide-inner">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+        <div>
+          <div class="badge-tag success">組合實戰 03 · 黃金甜區</div>
+          <h2 class="slide-title" style="color: var(--accent-emerald);">主力旗艦 ＋ 手術刀 Interface ＋ 適度思考 (Sonnet 5.5 + Surgical Context + Balanced)</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">資深工程師的日常：用最低的 Credit 成本，換取最高規格的 Production 架構</p>
+      </div>
+
+      <div class="combo-layout">
+        <!-- Left: Analysis -->
+        <div class="glass-card" style="padding: 1.6rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="spec-pill-group">
+              <span class="spec-pill success">🤖 Model: Claude Sonnet 5.5</span>
+              <span class="spec-pill success">📦 Context: 2,500 Tokens (純 Interface + 限制)</span>
+              <span class="spec-pill success">🧠 Effort: Balanced (4s)</span>
+            </div>
+
+            <div style="margin: 1rem 0;">
+              <div style="color: #94a3b8; font-size: 0.82rem;">單次請求耗損</div>
+              <div class="cost-badge-large" style="color: var(--accent-cyan);">~ 28 Credits (極致性價比)</div>
+            </div>
+
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+              <h4 style="color: #34d399; margin-bottom: 0.4rem; font-size: 0.95rem;">🛡️ 生產可用度：98% (Production Ready)</h4>
+              <p style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5;">
+                先給定好 <strong>Interface 契約</strong> 與明確防護邊界（Stream、副檔名驗證、大小限制），AI 精準填肉，完全不產生幻覺與垃圾依賴！
+              </p>
+            </div>
+          </div>
+
+          <div style="font-size: 0.82rem; color: #a7f3d0; font-family: var(--font-mono);">
+            ✨ 結論：每次提問省下 98% 點數，代碼即產即用，直接通過 Security Review。
+          </div>
+        </div>
+
+        <!-- Right: Code X-Ray -->
+        <div class="code-view">
+          <div style="color: #64748b; margin-bottom: 0.5rem;">// 高品質生產級架構實作</div>
+          <span style="color:#ff79c6;">class</span> <span style="color:#50fa7b;">UploadController</span>(<br>
+          &nbsp;&nbsp;<span style="color:#ff79c6;">private val</span> storagePort: StoragePort <span style="color:#6272a4;">// 依賴倒置契約</span><br>
+          ) {<br>
+          &nbsp;&nbsp;<span style="color:#ff79c6;">@PostMapping</span>(<span style="color:#f1fa8c;">"/upload"</span>)<br>
+          &nbsp;&nbsp;<span style="color:#ff79c6;">fun</span> <span style="color:#50fa7b;">upload</span>(<span style="color:#ff79c6;">@RequestParam</span> file: MultipartFile): UploadResponse {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6272a4;">// 🛡️ 防護 1：嚴格副檔名與 Magic Number 白名單驗證</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;FileValidator.validate(file.inputStream, allowedTypes = [PNG, PDF])<br>
+          <div class="code-annotation success">
+            ✅ <strong>Stream-based Architecture</strong><br>
+            以 `inputStream` 流式傳輸給雲端 Object Storage，記憶體常駐不到 8KB！
+          </div>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ff79c6;">val</span> uploadResult = storagePort.streamUpload(file.inputStream, file.size)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#ff79c6;">return</span> UploadResponse.success(uploadResult.publicUrl)<br>
+          &nbsp;&nbsp;}<br>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 12: THE MOAT & CONCLUSION -->
+  <div class="slide" id="slide-12">
+    <div class="slide-inner" style="align-items: center; text-align: center;">
+      <div class="badge-tag">🛡️ Conclusion · 工程師的真正護城河</div>
+      <h1 class="hero-title" style="font-size: 3rem;">語法不再是門檻，<br>架構裁判才是無價之寶</h1>
+      <p class="slide-subtitle" style="max-width: 720px;">
+        當 AI 可以在三秒內敲出八百行代碼，真正的生產力差距已經不在於敲鍵盤的速度，<br>
+        而在於你是否具備<strong>「定義問題邊界」</strong>、<strong>「調度 Context 資源」</strong>與<strong>「裁決系統穩健性」</strong>的底層能力。喵 ( `ω´ )
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; max-width: 900px; width: 100%; margin: 1.5rem 0;">
+        <div class="glass-card" style="padding: 1.5rem; text-align: left;">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📐</div>
+          <strong style="color: var(--accent-cyan); display:block; margin-bottom: 0.4rem;">1. 定義介面契約</strong>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+            先寫好嚴謹的 DTO、Interface 與失敗邊界，讓 AI 永遠在乾淨的防護網內跳舞。
+          </p>
+        </div>
+        <div class="glass-card" style="padding: 1.5rem; text-align: left;">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🎛️</div>
+          <strong style="color: var(--accent-amber); display:block; margin-bottom: 0.4rem;">2. 資源調度直覺</strong>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+            知道何時呼叫 Haiku 5.5 秒解、何時派 Sonnet 5.5、何時才請 Opus 5.5 出山。
+          </p>
+        </div>
+        <div class="glass-card" style="padding: 1.5rem; text-align: left;">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🔍</div>
+          <strong style="color: var(--accent-emerald); display:block; margin-bottom: 0.4rem;">3. 批判性審查力</strong>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+            一眼看出 OOM 隱患、路徑穿透漏洞與假 Mock 單元測試，做真正的品質守門員。
+          </p>
+        </div>
+      </div>
+
+      <button class="btn-action" onclick="goToSlide(1)">
+        <span>重新瀏覽投影片 (Restart Deck) ↺</span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Deck Navigation Controls -->
+<div class="deck-controls">
+  <button class="nav-btn" onclick="prevSlide()" title="上一頁 (←)">‹</button>
+  <div class="slide-dots" id="dots-container"></div>
+  <button class="nav-btn" onclick="nextSlide()" title="下一頁 (→)">›</button>
+</div>
+
+<script>
+// --- AUDIO SYNTHESIS ---
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playBeep(freq = 440, duration = 0.08, type = 'sine') {
+  try {
+    initAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+function playFanfare() {
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+  notes.forEach((freq, idx) => {
+    setTimeout(() => playBeep(freq, 0.25, 'triangle'), idx * 100);
+  });
+}
+
+// --- NAVIGATION ---
+const totalSlides = 12;
+let currentSlide = 1;
+
+function initDots() {
+  const container = document.getElementById('dots-container');
+  container.innerHTML = '';
+  for (let i = 1; i <= totalSlides; i++) {
+    const dot = document.createElement('div');
+    dot.className = `dot ${i === currentSlide ? 'active' : ''}`;
+    dot.onclick = () => goToSlide(i);
+    container.appendChild(dot);
+  }
+}
+
+function updateSlideVisibility() {
+  for (let i = 1; i <= totalSlides; i++) {
+    const el = document.getElementById(`slide-${i}`);
+    if (el) {
+      if (i === currentSlide) el.classList.add('active');
+      else el.classList.remove('active');
+    }
+  }
+  document.querySelectorAll('.dot').forEach((d, idx) => {
+    d.classList.toggle('active', idx + 1 === currentSlide);
+  });
+
+  if (currentSlide === 4) {
+    triggerConfetti();
+    playFanfare();
+  }
+  if (currentSlide === 5) {
+    animateCreditBurn();
+    playBeep(220, 0.3, 'sawtooth');
+  }
+}
+
+function goToSlide(n) {
+  if (n < 1 || n > totalSlides) return;
+  currentSlide = n;
+  playBeep(600, 0.05);
+  updateSlideVisibility();
+}
+
+function nextSlide() {
+  if (currentSlide < totalSlides) goToSlide(currentSlide + 1);
+}
+
+function prevSlide() {
+  if (currentSlide > 1) goToSlide(currentSlide - 1);
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') nextSlide();
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevSlide();
+});
+
+// --- SLIDE 2 & 3 SIMULATION ---
+let copiedPromptText = "";
+
+function copyRequirement() {
+  copiedPromptText = `請實作 Kotlin Spring Boot 檔案上傳 API (/api/v1/files/upload)：\n- 驗證副檔名、檔案大小上限 50MB\n- 包含 Unit Test 覆蓋率`;
+  const btn = document.getElementById('btn-copy-issue');
+  btn.className = "btn-action success";
+  btn.innerHTML = "<span>✓ 已成功複製 (Copied!)</span>";
+  document.getElementById('copy-status').innerHTML = "狀態：已複製至剪貼簿！請前往下一頁實作。";
+  playBeep(880, 0.12);
+  setTimeout(() => goToSlide(3), 750);
+}
+
+function pasteRequirement() {
+  const input = document.getElementById('mock-input');
+  input.style.color = '#38bdf8';
+  input.innerText = copiedPromptText || "請實作 Kotlin Spring Boot 檔案上傳 API (/api/v1/files/upload)...";
+  document.getElementById('btn-run-ai').removeAttribute('disabled');
+  playBeep(700, 0.08);
+}
+
+function triggerAiGeneration() {
+  const streamBox = document.getElementById('copilot-stream');
+  const codeEditor = document.getElementById('code-editor');
+  const runBtn = document.getElementById('btn-run-ai');
+  runBtn.setAttribute('disabled', 'true');
+
+  streamBox.innerHTML = `
+    <div style="background:rgba(255,255,255,0.05); padding:0.8rem; border-radius:6px; font-size:0.82rem;">
+      <strong style="color:var(--accent-cyan);">🤖 Copilot (Claude Sonnet 5.5)</strong>
+      <div style="margin-top:0.4rem; color:#94a3b8;" id="stream-text">正在分析檔案結構與上傳依賴...</div>
+    </div>
+  `;
+
+  playBeep(520, 0.06);
+
+  setTimeout(() => {
+    document.getElementById('stream-text').innerHTML = `
+      ✓ 驗證上傳邏輯與限制 (50MB)<br>
+      ✓ 自動生成 Mock S3 UploadClient<br>
+      ✓ 補齊 JUnit 5 單元測試案例<br>
+      <span style="color:#10b981; font-weight:bold;">已成功寫入 UploadController.kt！</span>
+    `;
+    codeEditor.innerHTML = `
+<span style="color:#ff79c6;">package</span> com.company.upload
+
+<span style="color:#ff79c6;">@RestController</span>
+<span style="color:#ff79c6;">@RequestMapping</span>(<span style="color:#f1fa8c;">"/api/v1/files"</span>)
+<span style="color:#8be9fd;">class</span> <span style="color:#50fa7b;">UploadController</span>(
+    <span style="color:#ff79c6;">private val</span> storageService: StorageService
+) {
+    <span style="color:#ff79c6;">@PostMapping</span>(<span style="color:#f1fa8c;">"/upload"</span>)
+    <span style="color:#ff79c6;">fun</span> <span style="color:#50fa7b;">uploadFile</span>(
+        <span style="color:#ff79c6;">@RequestParam</span>(<span style="color:#f1fa8c;">"file"</span>) file: MultipartFile
+    ): ResponseEntity&lt;UploadResponse&gt; {
+        <span style="color:#ff79c6;">val</span> result = storageService.store(file.bytes)
+        <span style="color:#ff79c6;">return</span> ResponseEntity.ok(UploadResponse(result.id, result.url))
+    }
+}
+    `;
+    document.getElementById('btn-deploy').style.display = 'inline-flex';
+    playBeep(987, 0.15);
+  }, 1200);
+}
+
+function deploySuccess() {
+  goToSlide(4);
+}
+
+// --- CONFETTI ---
+function triggerConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  const particles = [];
+  const colors = ['#00f0ff', '#ff3366', '#f59e0b', '#10b981', '#9d4edd', '#ffffff'];
+  for (let i = 0; i < 90; i++) {
+    particles.push({
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      vx: (Math.random() - 0.5) * 16,
+      vy: (Math.random() - 0.7) * 16,
+      size: Math.random() * 8 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: 1
+    });
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let active = false;
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.35;
+      p.alpha -= 0.012;
+      if (p.alpha > 0) {
+        active = true;
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+    });
+    if (active) requestAnimationFrame(render);
+  }
+  render();
+}
+
+function animateCreditBurn() {
+  const el = document.getElementById('credit-counter');
+  let current = 2500;
+  const interval = setInterval(() => {
+    current -= 85;
+    if (current <= 0) {
+      clearInterval(interval);
+      el.innerText = `0 Credits (欠費熔斷 💸)`;
+    } else {
+      el.innerText = `${current.toLocaleString()} Credits`;
+    }
+  }, 40);
+}
+
+// --- BACKGROUND CANVAS ---
+function initBgCanvas() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  const nodes = [];
+  for (let i = 0; i < 45; i++) {
+    nodes.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      radius: Math.random() * 2 + 1
+    });
+  }
+
+  function loop() {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.3)';
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.04)';
+
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      a.x += a.vx;
+      a.y += a.vy;
+      if (a.x < 0 || a.x > width) a.vx *= -1;
+      if (a.y < 0 || a.y > height) a.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (dist < 150) {
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+window.onload = () => {
+  initDots();
+  initBgCanvas();
+};
+</script>
+</body>
+</html>
